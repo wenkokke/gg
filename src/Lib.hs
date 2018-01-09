@@ -60,6 +60,7 @@ compile = go . nub . sort
                & map rhs               -- Take their right-hand sides
                & listToMaybe           -- Take the first of these right-hand sides
 
+-- |Rewrite a string using a 'RuleTree'
 apply :: RuleTree -> String -> String
 apply top = fromJust . go top
   where

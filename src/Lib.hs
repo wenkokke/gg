@@ -1,8 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 module Lib where
 
-import Debug.Trace (traceShow)
-
 import Control.Arrow (second)
 import Control.Applicative ((<|>))
 import Data.Char (isAlphaNum)

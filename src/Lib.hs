@@ -13,7 +13,7 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust, listToMaybe)
 import Data.Monoid ((<>))
 import Data.Ord (Ordering(..), comparing)
-import Text.ParserCombinators.ReadP(ReadP, skipSpaces, munch1, string, readP_to_S)
+import Text.ParserCombinators.ReadP(ReadP, char, skipSpaces, many1, munch1, string, readP_to_S)
 
 
 data Rule = Rule { lhs :: String, rhs :: String }
@@ -31,18 +31,27 @@ instance Show Rule where
 
 instance Read Rule where
   readsPrec _ = readP_to_S readRule
-    where
-      readRule :: ReadP Rule
-      readRule = Rule <$> chars <* arrow <*> chars
-        where
-          token = (skipSpaces *>)
-          arrow = token $ string "=>"
-          chars = token $ munch1 isAlphaNum
+
+readRule :: ReadP Rule
+readRule = Rule <$> chars <* arrow <*> chars
+  where
+    token = (skipSpaces *>)
+    arrow = token $ string "=>"
+    chars = token $ munch1 isAlphaNum
 
 
 data RuleTree = RuleTree { next :: Map Char RuleTree, output :: Maybe String }
               deriving (Show)
 
+instance Read RuleTree where
+  readsPrec _ = readP_to_S readRuleTree
+    where
+      readRuleTree :: ReadP RuleTree
+      readRuleTree = compile <$> many1 (rule <* semi)
+        where
+          token = (skipSpaces *>)
+          semi  = token $ char ';'
+          rule  = token $ readRule
 
 -- |Compile a list of rules into a 'RuleTree'
 compile :: [Rule] -> RuleTree

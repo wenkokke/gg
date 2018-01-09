@@ -28,8 +28,8 @@ library:
   source-dirs: src
 
 executables:
-  gg-rewrite:
-    main:                gg-rewrite.hs
+  gg:
+    main:                gg.hs
     source-dirs:         app
     ghc-options:
     - -threaded

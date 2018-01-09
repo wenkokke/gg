@@ -43,7 +43,7 @@ data RuleTree = RuleTree { next :: Map Char RuleTree, output :: Maybe String }
 
 instance Show RuleTree where
   showsPrec _ rs =
-    foldr1 (.) [ shows r . showString "; " | r <- decompile rs ]
+    foldr1 (.) [ shows r . showString ";\n" | r <- decompile rs ]
 
 instance Read RuleTree where
   readsPrec _ = readP_to_S readRuleTree

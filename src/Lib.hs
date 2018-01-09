@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Lib where
 
+import Debug.Trace (traceShow)
 
 import Control.Arrow (second)
 import Control.Applicative ((<|>))
@@ -10,7 +11,7 @@ import Data.List (groupBy, sort, span)
 import Data.List.Ordered (nub)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Data.Maybe (fromJust, listToMaybe)
+import Data.Maybe (fromJust, listToMaybe, maybeToList)
 import Data.Monoid ((<>))
 import Data.Ord (Ordering(..), comparing)
 import Text.ParserCombinators.ReadP(ReadP, char, skipSpaces, many1, munch1, string, readP_to_S)
@@ -41,17 +42,20 @@ readRule = Rule <$> chars <* arrow <*> chars
 
 
 data RuleTree = RuleTree { next :: Map Char RuleTree, output :: Maybe String }
-              deriving (Show)
+
+instance Show RuleTree where
+  showsPrec _ rs =
+    foldr1 (.) [ shows r . showString "; " | r <- decompile rs ]
 
 instance Read RuleTree where
   readsPrec _ = readP_to_S readRuleTree
-    where
-      readRuleTree :: ReadP RuleTree
-      readRuleTree = compile <$> many1 (rule <* semi)
-        where
-          token = (skipSpaces *>)
-          semi  = token $ char ';'
-          rule  = token $ readRule
+
+readRuleTree :: ReadP RuleTree
+readRuleTree = compile <$> many1 (rule <* semi)
+  where
+    token = (skipSpaces *>)
+    semi  = token $ char ';'
+    rule  = token $ readRule
 
 -- |Compile a list of rules into a 'RuleTree'
 compile :: [Rule] -> RuleTree
@@ -84,18 +88,30 @@ compile = go . nub . sort
 
 -- |Rewrite a string using a 'RuleTree'
 apply :: RuleTree -> String -> String
-apply top = fromJust . go top
+apply top = fromJust . go top []
   where
-    go :: RuleTree -> String -> Maybe String
-    go _            ""      = return ""
-    go RuleTree{..} (c:str) = carryOn <|> stopNow <|> noMatch
+    go :: RuleTree -> String -> String -> Maybe String
+    go _            _   ""      = return ""
+    go RuleTree{..} mem (c:str) = carryOn <|> stopNow <|> noMatch
       where
-        carryOn = do rs <- M.lookup c next   -- Follow the branch labeled with c
-                     go rs str               -- Recursively apply the rules
+        carryOn = do rs <- M.lookup c next      -- Follow the branch labeled with c
+                     go rs (c:mem) str          -- Recursively apply the rules
 
-        stopNow = do str1 <- output          -- Take the current output
-                     str2 <- go top (c:str)  -- Start again from the root of the rule tree
-                     return (str1 ++ str2)   -- Concatenate the resulting strings
+        stopNow = do str1 <- output             -- Take the current output
+                     str2 <- go top [] (c:str)  -- Start again from the root of the rule tree
+                     return (str1 ++ str2)      -- Concatenate the resulting strings
 
-        noMatch = do str' <- go top str      -- Start again from the root of the rule tree
-                     return (c:str')         -- Concatenate the character which didn't match any rule
+        noMatch = do str2 <- go top [] str      -- Start again from the root of the rule tree
+                     let str1 = reverse (c:mem) -- Add up all the character's we've skipped
+                     return (str1 ++ str2)      -- And concatenate them to the resulting string
+
+-- |Decompile a 'RuleTree' into a list of rules
+decompile :: RuleTree -> [Rule]
+decompile = go ""
+  where
+    go :: String -> RuleTree -> [Rule]
+    go lhs RuleTree{..} = now ++ later
+      where
+        now   = maybeToList (Rule (reverse lhs) <$> output)
+        later = concat [ go (c:lhs) rs | (c,rs) <- M.toList next ]
+

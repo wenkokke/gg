@@ -1,8 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
 module Lib where
 
+
 import Control.Arrow (second)
-import Control.Applicative ((<*>), (<|>), pure)
+import Control.Applicative ((<|>))
+import Data.Char (isAlphaNum)
 import Data.Function ((&), on)
 import Data.List (groupBy, sort, span)
 import Data.List.Ordered (nub)
@@ -11,6 +13,8 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust, listToMaybe)
 import Data.Monoid ((<>))
 import Data.Ord (Ordering(..), comparing)
+import Text.ParserCombinators.ReadP(ReadP, skipSpaces, munch1, string, readP_to_S)
+
 
 data Rule = Rule { lhs :: String, rhs :: String }
 
@@ -25,8 +29,20 @@ instance Show Rule where
   showsPrec _ (Rule lhs rhs) =
     showString lhs . showString " => " . showString rhs
 
+instance Read Rule where
+  readsPrec _ = readP_to_S readRule
+    where
+      readRule :: ReadP Rule
+      readRule = Rule <$> chars <* arrow <*> chars
+        where
+          token = (skipSpaces *>)
+          arrow = token $ string "=>"
+          chars = token $ munch1 isAlphaNum
+
+
 data RuleTree = RuleTree { next :: Map Char RuleTree, output :: Maybe String }
               deriving (Show)
+
 
 -- |Compile a list of rules into a 'RuleTree'
 compile :: [Rule] -> RuleTree
@@ -56,6 +72,7 @@ compile = go . nub . sort
                & map rhs               -- Take their right-hand sides
                & listToMaybe           -- Take the first of these right-hand sides
 
+
 -- |Rewrite a string using a 'RuleTree'
 apply :: RuleTree -> String -> String
 apply top = fromJust . go top
@@ -73,4 +90,3 @@ apply top = fromJust . go top
 
         noMatch = do str' <- go top str      -- Start again from the root of the rule tree
                      return (c:str')         -- Concatenate the character which didn't match any rule
-

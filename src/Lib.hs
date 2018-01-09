@@ -12,10 +12,7 @@ import Data.Maybe (fromJust, listToMaybe)
 import Data.Monoid ((<>))
 import Data.Ord (Ordering(..), comparing)
 
-data Rule = Rule
-            { lhs :: String
-            , rhs :: String
-            }
+data Rule = Rule { lhs :: String, rhs :: String }
 
 instance Eq Rule where
   r1 == r2 = compare r1 r2 == EQ
@@ -25,12 +22,11 @@ instance Ord Rule where
                   comparing (length . rhs) r1 r2
 
 instance Show Rule where
-  showsPrec _ (Rule lhs rhs) = showString lhs . showString " => " . showString rhs
+  showsPrec _ (Rule lhs rhs) =
+    showString lhs . showString " => " . showString rhs
 
-data RuleTree = RuleTree
-                { next   :: Map Char RuleTree
-                , output :: Maybe String
-                } deriving (Show)
+data RuleTree = RuleTree { next :: Map Char RuleTree, output :: Maybe String }
+              deriving (Show)
 
 -- |Compile a list of rules into a 'RuleTree'
 compile :: [Rule] -> RuleTree

@@ -21,13 +21,15 @@ description:         Please see the README on Github at <https://github.com/wenk
 
 dependencies:
 - base >= 4.7 && < 5
+- containers >= 0.5 && < 0.6
+- data-ordlist >= 0.4 && < 0.5
 
 library:
   source-dirs: src
 
 executables:
-  gg-exe:
-    main:                Main.hs
+  gg-rewrite:
+    main:                gg-rewrite.hs
     source-dirs:         app
     ghc-options:
     - -threaded

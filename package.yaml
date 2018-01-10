@@ -14,9 +14,6 @@ extra-source-files:
 # synopsis:            Short description of your package
 # category:            Web
 
-# To avoid duplicated efforts in documentation and dealing with the
-# complications of embedding Haddock markup inside cabal files, it is
-# common to point users to the README.md file.
 description:         Please see the README on Github at <https://github.com/wenkokke/gg#readme>
 
 dependencies:
@@ -41,6 +38,7 @@ executables:
 tests:
   gg-test:
     main:                Spec.hs
+    other-modules:       Rewrite
     source-dirs:         test
     ghc-options:
     - -threaded
@@ -48,3 +46,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - gg
+    - QuickCheck >= 2.10 && < 2.11

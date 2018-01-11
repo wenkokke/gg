@@ -74,16 +74,16 @@ apply top = fromJust . go top []
     go _            mem ""      = return (reverse mem)
     go RuleTree{..} mem (c:str) = carryOn <|> stopNow <|> noMatch
       where
-        carryOn = do rs <- M.lookup c next      -- Follow the branch labeled with c
-                     go rs (c:mem) str          -- Recursively apply the rules
+        carryOn = do rs <- M.lookup c next            -- Follow the branch labeled with c
+                     go rs (c:mem) str                -- Recursively apply the rules
 
-        stopNow = do str1 <- output             -- Take the current output
-                     str2 <- go top [] (c:str)  -- Start again from the root of the rule tree
-                     return (str1 ++ str2)      -- Concatenate the resulting strings
+        stopNow = do str1 <- output                   -- Take the current output
+                     str2 <- go top [] (c:str)        -- Start again from the root of the rule tree
+                     return (str1 ++ str2)            -- Concatenate the resulting strings
 
-        noMatch = do str2 <- go top [] str      -- Start again from the root of the rule tree
-                     let str1 = reverse (c:mem) -- Add up all the character's we've skipped
-                     return (str1 ++ str2)      -- And concatenate them to the resulting string
+        noMatch = do let (c':str') = reverse (c:mem)  -- Collect the skipped characters
+                     str'' <- go top [] (str' ++ str) -- Add all but the first one back
+                     return (c':str'')                -- And add the first one resulting string
 
 
 -- |Decompile a 'RuleTree' into a list of rules

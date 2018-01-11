@@ -36,7 +36,7 @@ executables:
     - gg
 
 tests:
-  gg-test:
+  gg-spec:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -46,3 +46,4 @@ tests:
     dependencies:
     - gg
     - QuickCheck >= 2.10 && < 2.11
+    - HUnit >= 1.6 && < 1.7

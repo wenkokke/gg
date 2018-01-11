@@ -77,7 +77,7 @@ apply top = fromJust . go
                      return (c:str'')
 
     go' :: RuleTree -> String -> Maybe String
-    go' _            ""      = Nothing
+    go' RuleTree{..} ""      = output
     go' RuleTree{..} (c:str) = carryOn <|> stopNow
       where
         carryOn = do rs <- M.lookup c next -- Follow the branch labeled with c

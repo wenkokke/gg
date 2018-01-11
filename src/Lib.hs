@@ -12,14 +12,16 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust, listToMaybe, maybeToList)
 import Data.Monoid ((<>))
 import Data.Ord (Ordering(..), comparing)
-import Text.ParserCombinators.ReadP(ReadP, char, skipSpaces, many1, munch1, string, readP_to_S)
+import Text.ParserCombinators.ReadP (ReadP, char, skipSpaces, many1, munch1, string)
 
 
-data Rule = Rule { lhs :: String, rhs :: String }
-          deriving (Eq)
+data Rule =
+  Rule { lhs :: String, rhs :: String }
+  deriving (Eq, Show)
 
-data RuleTree = RuleTree { next :: Map Char RuleTree, output :: Maybe String }
-              deriving (Eq)
+data RuleTree =
+  RuleTree { next :: Map Char RuleTree, output :: Maybe String }
+  deriving (Eq, Show)
 
 
 -- |Compare two rules based on their lhs and the length of their rhs
@@ -34,8 +36,11 @@ eqRule r1 r2 = cmpRule r1 r2 == EQ
 
 -- |Compile a list of rules into a 'RuleTree'
 compile :: [Rule] -> RuleTree
-compile = go . nubBy eqRule . sortBy cmpRule
+compile = go . noEqual . sortBy cmpRule
   where
+    noEqual :: [Rule] -> [Rule]
+    noEqual = concat . filter ((==1) . length) . groupBy eqRule
+
     go :: [Rule] -> RuleTree
     go rs = RuleTree next output
       where
@@ -66,7 +71,7 @@ apply :: RuleTree -> String -> String
 apply top = fromJust . go top []
   where
     go :: RuleTree -> String -> String -> Maybe String
-    go _            _   ""      = return ""
+    go _            mem ""      = return (reverse mem)
     go RuleTree{..} mem (c:str) = carryOn <|> stopNow <|> noMatch
       where
         carryOn = do rs <- M.lookup c next      -- Follow the branch labeled with c
@@ -80,6 +85,7 @@ apply top = fromJust . go top []
                      let str1 = reverse (c:mem) -- Add up all the character's we've skipped
                      return (str1 ++ str2)      -- And concatenate them to the resulting string
 
+
 -- |Decompile a 'RuleTree' into a list of rules
 decompile :: RuleTree -> [Rule]
 decompile = go ""
@@ -91,43 +97,28 @@ decompile = go ""
         later = concat [ go (c:lhs) rs | (c,rs) <- M.toList next ]
 
 
--- * Instances of 'Show'
+-- * Pretty printing and parsing rules
 
 showRule :: Rule -> ShowS
 showRule (Rule lhs rhs) =
   showString lhs . showString " => " . showString rhs
 
-instance Show Rule where
-  showsPrec _ = showRule
-
 showRules :: [Rule] -> ShowS
-showRules rs = foldr1 (.) [ shows r . showString ";\n" | r <- rs ]
+showRules rs = foldr1 (.) [ showRule r . showString ";\n" | r <- rs ]
 
-instance Show RuleTree where
-  showsPrec _ = showRules . decompile
-
-
--- * Instances of 'Read'
-
-instance Read Rule where
-  readsPrec _ = readP_to_S readRule
-
-readRule :: ReadP Rule
-readRule = Rule <$> chars <* arrow <*> chars
+readpRule :: ReadP Rule
+readpRule = Rule <$> chars <* arrow <*> chars
   where
     token = (skipSpaces *>)
     arrow = token $ string "=>"
     chars = token $ munch1 isAlphaNum
 
-instance Read RuleTree where
-  readsPrec _ = readP_to_S readRuleTree
-
-readRules :: ReadP [Rule]
-readRules = many1 (rule <* semi)
+readpRules :: ReadP [Rule]
+readpRules = many1 (rule <* semi)
   where
     token = (skipSpaces *>)
     semi  = token $ char ';'
-    rule  = token $ readRule
+    rule  = token $ readpRule
 
-readRuleTree :: ReadP RuleTree
-readRuleTree = compile <$> readRules
+readpRuleTree :: ReadP RuleTree
+readpRuleTree = compile <$> readpRules

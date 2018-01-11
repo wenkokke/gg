@@ -68,22 +68,25 @@ compile = go . noEqual . sortBy cmpRule
 
 -- |Rewrite a string using a 'RuleTree'
 apply :: RuleTree -> String -> String
-apply top = fromJust . go top []
+apply top = fromJust . go
   where
-    go :: RuleTree -> String -> String -> Maybe String
-    go _            mem ""      = return (reverse mem)
-    go RuleTree{..} mem (c:str) = carryOn <|> stopNow <|> noMatch
+    go :: String -> Maybe String
+    go ""           = return ""
+    go str@(c:str') = go' top str <|> noMatch
       where
-        carryOn = do rs <- M.lookup c next            -- Follow the branch labeled with c
-                     go rs (c:mem) str                -- Recursively apply the rules
+        noMatch = do str'' <- go str'
+                     return (c : str'')
 
-        stopNow = do str1 <- output                   -- Take the current output
-                     str2 <- go top [] (c:str)        -- Start again from the root of the rule tree
-                     return (str1 ++ str2)            -- Concatenate the resulting strings
+    go' :: RuleTree -> String -> Maybe String
+    go' _            ""      = return ""
+    go' RuleTree{..} (c:str) = carryOn <|> stopNow
+      where
+        carryOn = do rs <- M.lookup c next -- Follow the branch labeled with c
+                     go' rs str            -- Recursively apply the rules
 
-        noMatch = do let (c':str') = reverse (c:mem)  -- Collect the skipped characters
-                     str'' <- go top [] (str' ++ str) -- Add all but the first one back
-                     return (c':str'')                -- And add the first one resulting string
+        stopNow = do str1 <- output        -- Take the current output
+                     str2 <- go (c:str)    -- Start again from the root of the rule tree
+                     return (str1 ++ str2) -- Concatenate the resulting strings
 
 
 -- |Decompile a 'RuleTree' into a list of rules

@@ -6,7 +6,6 @@ import Control.Applicative ((<|>))
 import Data.Char (isAlphaNum)
 import Data.Function ((&), on)
 import Data.List (groupBy, sortBy, span)
-import Data.List.Ordered (nubBy)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust, listToMaybe, maybeToList)
@@ -75,10 +74,10 @@ apply top = fromJust . go
     go str@(c:str') = go' top str <|> noMatch
       where
         noMatch = do str'' <- go str'
-                     return (c : str'')
+                     return (c:str'')
 
     go' :: RuleTree -> String -> Maybe String
-    go' _            ""      = return ""
+    go' _            ""      = Nothing
     go' RuleTree{..} (c:str) = carryOn <|> stopNow
       where
         carryOn = do rs <- M.lookup c next -- Follow the branch labeled with c

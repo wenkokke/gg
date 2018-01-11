@@ -11,16 +11,16 @@ import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust, listToMaybe, maybeToList)
 import Data.Monoid ((<>))
 import Data.Ord (Ordering(..), comparing)
-import Text.ParserCombinators.ReadP (ReadP, char, skipSpaces, many1, munch1, string)
+import Text.ParserCombinators.ReadP (ReadP, readP_to_S, char, skipSpaces, many1, munch1, string)
 
 
 data Rule =
   Rule { lhs :: String, rhs :: String }
-  deriving (Eq, Show)
+  deriving (Eq)
 
 data RuleTree =
   RuleTree { next :: Map Char RuleTree, output :: Maybe String }
-  deriving (Eq, Show)
+  deriving (Eq)
 
 
 -- |Compare two rules based on their lhs and the length of their rhs
@@ -101,12 +101,21 @@ decompile = go ""
 
 -- * Pretty printing and parsing rules
 
+instance Show Rule where
+  showsPrec _ = showRule
+
 showRule :: Rule -> ShowS
 showRule (Rule lhs rhs) =
   showString lhs . showString " => " . showString rhs
 
+instance Show RuleTree where
+  showsPrec _ = showRules . decompile
+
 showRules :: [Rule] -> ShowS
 showRules rs = foldr1 (.) [ showRule r . showString ";\n" | r <- rs ]
+
+instance Read Rule where
+  readsPrec _ = readP_to_S readpRule
 
 readpRule :: ReadP Rule
 readpRule = Rule <$> chars <* arrow <*> chars
@@ -115,12 +124,12 @@ readpRule = Rule <$> chars <* arrow <*> chars
     arrow = token $ string "=>"
     chars = token $ munch1 isAlphaNum
 
+instance Read RuleTree where
+  readsPrec _ = readP_to_S $ compile <$> readpRules
+
 readpRules :: ReadP [Rule]
 readpRules = many1 (rule <* semi)
   where
     token = (skipSpaces *>)
     semi  = token $ char ';'
     rule  = token $ readpRule
-
-readpRuleTree :: ReadP RuleTree
-readpRuleTree = compile <$> readpRules

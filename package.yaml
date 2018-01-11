@@ -37,6 +37,7 @@ executables:
 tests:
   gg-spec:
     main:                Spec.hs
+    other-modules:       Lib.Ref
     source-dirs:         test
     ghc-options:
     - -threaded

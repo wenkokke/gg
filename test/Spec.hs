@@ -5,16 +5,13 @@ import Lib
 import qualified Lib.Ref as Ref
 import Test.QuickCheck
 
--- "l"
--- l => k;
--- ook => okll;
--- gk => kk;
-
 
 main :: IO ()
 main = do
   quickCheck prop_DecompileCorrect
+  quickCheck prop_ShowReadId
   quickCheck prop_EqualToRef
+
 
 prop_DecompileCorrect str Engine{..} =
   rewrite str rules == rewrite str rules'
@@ -22,13 +19,14 @@ prop_DecompileCorrect str Engine{..} =
     rules' = decompile . compile $ rules
 
 prop_ShowReadId Engine{..} =
-  read . show $ rs == rs
+  rs1 == rs2
   where
-    rs = compile rules
+    rs1, rs2 :: RuleTree
+    rs1 = compile rules
+    rs2 = read (show rs1)
 
 prop_EqualToRef str Engine{..} =
   rewrite str rules == Ref.rewrite str rules
-
 
 
 -- |Implementation of 'rewrite' with an identical type to the reference function

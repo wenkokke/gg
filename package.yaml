@@ -38,7 +38,6 @@ executables:
 tests:
   gg-test:
     main:                Spec.hs
-    other-modules:       Rewrite
     source-dirs:         test
     ghc-options:
     - -threaded

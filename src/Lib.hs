@@ -5,8 +5,8 @@ import Control.Arrow (second)
 import Control.Applicative ((<|>))
 import Data.Char (isAlphaNum)
 import Data.Function ((&), on)
-import Data.List (groupBy, sort, span)
-import Data.List.Ordered (nub)
+import Data.List (groupBy, sortBy, span)
+import Data.List.Ordered (nubBy)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromJust, listToMaybe, maybeToList)
@@ -16,48 +16,25 @@ import Text.ParserCombinators.ReadP(ReadP, char, skipSpaces, many1, munch1, stri
 
 
 data Rule = Rule { lhs :: String, rhs :: String }
-
-instance Eq Rule where
-  r1 == r2 = compare r1 r2 == EQ
-
-instance Ord Rule where
-  compare r1 r2 = comparing lhs r1 r2 <>
-                  comparing (length . rhs) r1 r2
-
-instance Show Rule where
-  showsPrec _ (Rule lhs rhs) =
-    showString lhs . showString " => " . showString rhs
-
-instance Read Rule where
-  readsPrec _ = readP_to_S readRule
-
-readRule :: ReadP Rule
-readRule = Rule <$> chars <* arrow <*> chars
-  where
-    token = (skipSpaces *>)
-    arrow = token $ string "=>"
-    chars = token $ munch1 isAlphaNum
-
+          deriving (Eq)
 
 data RuleTree = RuleTree { next :: Map Char RuleTree, output :: Maybe String }
+              deriving (Eq)
 
-instance Show RuleTree where
-  showsPrec _ rs =
-    foldr1 (.) [ shows r . showString ";\n" | r <- decompile rs ]
 
-instance Read RuleTree where
-  readsPrec _ = readP_to_S readRuleTree
+-- |Compare two rules based on their lhs and the length of their rhs
+cmpRule :: Rule -> Rule -> Ordering
+cmpRule r1 r2 = comparing lhs r1 r2 <>
+                comparing (length . rhs) r1 r2
 
-readRuleTree :: ReadP RuleTree
-readRuleTree = compile <$> many1 (rule <* semi)
-  where
-    token = (skipSpaces *>)
-    semi  = token $ char ';'
-    rule  = token $ readRule
+-- |Check if two rules are equal according to 'cmpRule'
+eqRule :: Rule -> Rule -> Bool
+eqRule r1 r2 = cmpRule r1 r2 == EQ
+
 
 -- |Compile a list of rules into a 'RuleTree'
 compile :: [Rule] -> RuleTree
-compile = go . nub . sort
+compile = go . nubBy eqRule . sortBy cmpRule
   where
     go :: [Rule] -> RuleTree
     go rs = RuleTree next output
@@ -113,3 +90,44 @@ decompile = go ""
         now   = maybeToList (Rule (reverse lhs) <$> output)
         later = concat [ go (c:lhs) rs | (c,rs) <- M.toList next ]
 
+
+-- * Instances of 'Show'
+
+showRule :: Rule -> ShowS
+showRule (Rule lhs rhs) =
+  showString lhs . showString " => " . showString rhs
+
+instance Show Rule where
+  showsPrec _ = showRule
+
+showRules :: [Rule] -> ShowS
+showRules rs = foldr1 (.) [ shows r . showString ";\n" | r <- rs ]
+
+instance Show RuleTree where
+  showsPrec _ = showRules . decompile
+
+
+-- * Instances of 'Read'
+
+instance Read Rule where
+  readsPrec _ = readP_to_S readRule
+
+readRule :: ReadP Rule
+readRule = Rule <$> chars <* arrow <*> chars
+  where
+    token = (skipSpaces *>)
+    arrow = token $ string "=>"
+    chars = token $ munch1 isAlphaNum
+
+instance Read RuleTree where
+  readsPrec _ = readP_to_S readRuleTree
+
+readRules :: ReadP [Rule]
+readRules = many1 (rule <* semi)
+  where
+    token = (skipSpaces *>)
+    semi  = token $ char ';'
+    rule  = token $ readRule
+
+readRuleTree :: ReadP RuleTree
+readRuleTree = compile <$> readRules

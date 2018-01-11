@@ -1,17 +1,13 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 import Lib
-import qualified Rewrite as Ref
-import GHC.Generics (Generic)
+import qualified Lib.Ref as Ref
 import Test.QuickCheck
 
 newtype Engine = Engine { rules :: [Rule] }
 
-deriving instance Generic Rule
-deriving instance Generic Engine
-deriving instance Show Engine
+instance Show Engine where
+  showsPrec _ = showRules . rules
 
 arbitraryABC :: Gen String
 arbitraryABC = listOf1 $ elements ['a'..'z']
@@ -32,22 +28,21 @@ arbitraryEngine = do
   rules <- listOf1 $ arbitraryRule abc
   return $ Engine rules
 
-comp_Rule :: Rule -> Ref.Rule
-comp_Rule Rule{..} = Ref.Rule lhs rhs
+rewrite :: String -> [Rule] -> String
+rewrite str rules = apply (compile rules) str
 
-comp_Engine :: Engine -> Ref.Engine
-comp_Engine Engine{..} = map comp_Rule rules
-
-rewrite :: String -> Engine -> String
-rewrite str Engine{..} = apply (compile rules) str
-
-prop_DecompileCorrect str e1@Engine{..} =
-  rewrite str e1 == rewrite str e2
+prop_DecompileCorrect str Engine{..} =
+  rewrite str rules == rewrite str rules'
   where
-    e2 = Engine . decompile . compile $ rules
+    rules' = decompile . compile $ rules
 
-prop_EqualToRef str e =
-  rewrite str e == Ref.rewrite str (comp_Engine e)
+prop_ShowReadId Engine{..} =
+  read . show $ rs == rs
+  where
+    rs = compile rules
+
+prop_EqualToRef str Engine{..} =
+  rewrite str rules == Ref.rewrite str rules
 
 main :: IO ()
 main = do
